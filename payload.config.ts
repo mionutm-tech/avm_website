@@ -59,21 +59,31 @@ export default buildConfig({
   }),
   sharp,
   onInit: async (payload) => {
-    // Payload's postgresAdapter gates auto-push behind NODE_ENV !== 'production',
-    // which Vercel sets. Call it directly so the schema syncs on first boot.
+    payload.logger.info("onInit: starting schema push");
     try {
+      process.env.PAYLOAD_FORCE_DRIZZLE_PUSH = "true";
       await pushDevSchema(payload.db as Parameters<typeof pushDevSchema>[0]);
+      payload.logger.info("onInit: schema push OK");
     } catch (err) {
-      payload.logger.error({ err }, "Schema push failed");
+      payload.logger.error(
+        { err: err instanceof Error ? { message: err.message, stack: err.stack } : err },
+        "onInit: schema push FAILED"
+      );
+      return;
     }
 
-    const { totalDocs } = await payload.count({ collection: "projects" });
-    if (totalDocs === 0) {
-      try {
+    try {
+      const { totalDocs } = await payload.count({ collection: "projects" });
+      payload.logger.info(`onInit: projects count = ${totalDocs}`);
+      if (totalDocs === 0) {
         await seed(payload);
-      } catch (err) {
-        payload.logger.error({ err }, "Seed failed");
+        payload.logger.info("onInit: seed OK");
       }
+    } catch (err) {
+      payload.logger.error(
+        { err: err instanceof Error ? { message: err.message, stack: err.stack } : err },
+        "onInit: seed FAILED"
+      );
     }
   },
 });
