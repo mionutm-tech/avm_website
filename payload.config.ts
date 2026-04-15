@@ -55,6 +55,7 @@ export default buildConfig({
     push: true,
     pool: {
       connectionString: process.env.DATABASE_URL || process.env.DATABASE_URI,
+      ssl: { rejectUnauthorized: false },
     },
   }),
   sharp,
