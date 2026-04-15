@@ -59,31 +59,29 @@ export default buildConfig({
   }),
   sharp,
   onInit: async (payload) => {
-    payload.logger.info("onInit: starting schema push");
+    console.log("[AVMUI] onInit: starting schema push");
     try {
       process.env.PAYLOAD_FORCE_DRIZZLE_PUSH = "true";
       await pushDevSchema(payload.db as Parameters<typeof pushDevSchema>[0]);
-      payload.logger.info("onInit: schema push OK");
+      console.log("[AVMUI] onInit: schema push OK");
     } catch (err) {
-      payload.logger.error(
-        { err: err instanceof Error ? { message: err.message, stack: err.stack } : err },
-        "onInit: schema push FAILED"
-      );
+      console.error("[AVMUI] onInit: schema push FAILED",
+        err instanceof Error ? err.message : err,
+        err instanceof Error ? err.stack : "");
       return;
     }
 
     try {
       const { totalDocs } = await payload.count({ collection: "projects" });
-      payload.logger.info(`onInit: projects count = ${totalDocs}`);
+      console.log(`[AVMUI] onInit: projects count = ${totalDocs}`);
       if (totalDocs === 0) {
         await seed(payload);
-        payload.logger.info("onInit: seed OK");
+        console.log("[AVMUI] onInit: seed OK");
       }
     } catch (err) {
-      payload.logger.error(
-        { err: err instanceof Error ? { message: err.message, stack: err.stack } : err },
-        "onInit: seed FAILED"
-      );
+      console.error("[AVMUI] onInit: seed FAILED",
+        err instanceof Error ? err.message : err,
+        err instanceof Error ? err.stack : "");
     }
   },
 });
