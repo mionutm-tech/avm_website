@@ -1,5 +1,6 @@
 import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { pushDevSchema } from "@payloadcms/drizzle";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -58,6 +59,14 @@ export default buildConfig({
   }),
   sharp,
   onInit: async (payload) => {
+    // Payload's postgresAdapter gates auto-push behind NODE_ENV !== 'production',
+    // which Vercel sets. Call it directly so the schema syncs on first boot.
+    try {
+      await pushDevSchema(payload.db as Parameters<typeof pushDevSchema>[0]);
+    } catch (err) {
+      payload.logger.error({ err }, "Schema push failed");
+    }
+
     const { totalDocs } = await payload.count({ collection: "projects" });
     if (totalDocs === 0) {
       try {
