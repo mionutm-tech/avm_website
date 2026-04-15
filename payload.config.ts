@@ -60,29 +60,25 @@ export default buildConfig({
   }),
   sharp,
   onInit: async (payload) => {
-    console.log("[AVMUI] onInit: starting schema push");
+    // Payload's postgresAdapter gates auto-push behind NODE_ENV !== 'production'
+    // (db-postgres/dist/connect.js:110). Call pushDevSchema directly so the
+    // schema syncs on first boot in production. Idempotent — no-ops when the
+    // schema already matches.
     try {
       process.env.PAYLOAD_FORCE_DRIZZLE_PUSH = "true";
       await pushDevSchema(payload.db as Parameters<typeof pushDevSchema>[0]);
-      console.log("[AVMUI] onInit: schema push OK");
     } catch (err) {
-      console.error("[AVMUI] onInit: schema push FAILED",
-        err instanceof Error ? err.message : err,
-        err instanceof Error ? err.stack : "");
+      payload.logger.error({ err }, "Schema push failed");
       return;
     }
 
-    try {
-      const { totalDocs } = await payload.count({ collection: "projects" });
-      console.log(`[AVMUI] onInit: projects count = ${totalDocs}`);
-      if (totalDocs === 0) {
+    const { totalDocs } = await payload.count({ collection: "projects" });
+    if (totalDocs === 0) {
+      try {
         await seed(payload);
-        console.log("[AVMUI] onInit: seed OK");
+      } catch (err) {
+        payload.logger.error({ err }, "Seed failed");
       }
-    } catch (err) {
-      console.error("[AVMUI] onInit: seed FAILED",
-        err instanceof Error ? err.message : err,
-        err instanceof Error ? err.stack : "");
     }
   },
 });
